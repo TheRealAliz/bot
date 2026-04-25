@@ -1,34 +1,28 @@
-name: Scrape Laravel and Send to Bale
+name: Scrape and Send HTML to Bale
 
 on:
   workflow_dispatch:
 
 jobs:
-  scrape-and-send:
+  scrape:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Fetch laravel.com HTML
+        run: |
+          curl -s -L -H "User-Agent: Mozilla/5.0" https://laravel.com -o laravel.html
+          echo "✅ Downloaded HTML ($(wc -c < laravel.html) bytes)"
       
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      
-      - name: Install dependencies
-        run: pip install requests
-      
-      - name: Run scraper
-        run: python scrape_laravel.py
-      
-      - name: Send HTML to Bale
+      - name: Send to Bale
         env:
           BOT_TOKEN: ${{ secrets.BALE_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
         run: |
-          # Send the HTML file to Bale
-          curl -s -X POST "https://tapi.bale.ai/bot${BOT_TOKEN}/sendDocument" \
+          curl -X POST "https://tapi.bale.ai/bot${BOT_TOKEN}/sendDocument" \
             -F chat_id="${CHAT_ID}" \
             -F document="@laravel.html" \
             -F caption="📄 Laravel.com homepage
+
+📅 Scraped: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+📊 Size: $(wc -c < laravel.html) bytes
+🔗 Source: https://laravel.com"
