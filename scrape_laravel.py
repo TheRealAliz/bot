@@ -1,28 +1,28 @@
-# quick_scrape.py
 import requests
-from bs4 import BeautifulSoup
 import os
-from pathlib import Path
 
-def quick_scrape():
-    # Setup
-    os.makedirs("laravel_page", exist_ok=True)
+def scrape_laravel():
+    """Fetch laravel.com and save just the HTML"""
     
-    # Get page
-    print("Fetching laravel.com...")
-    response = requests.get('https://laravel.com', headers={'User-Agent': 'Mozilla/5.0'})
-    soup = BeautifulSoup(response.text, 'html.parser')
+    print("🌐 Fetching laravel.com...")
     
-    # Save HTML
-    with open('laravel_page/index.html', 'w', encoding='utf-8') as f:
-        f.write(str(soup))
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
     
-    # Save to a single file
-    with open('laravel_page/full_page.html', 'w', encoding='utf-8') as f:
-        f.write(response.text)
+    response = requests.get('https://laravel.com', headers=headers)
     
-    print(f"✅ Saved! HTML size: {len(response.text)} characters")
-    print(f"📁 Files saved to 'laravel_page/' directory")
+    if response.status_code == 200:
+        # Save HTML file
+        with open('laravel.html', 'w', encoding='utf-8') as f:
+            f.write(response.text)
+        
+        file_size = len(response.text)
+        print(f"✅ Saved laravel.html ({file_size} characters)")
+        return True
+    else:
+        print(f"❌ Failed: {response.status_code}")
+        return False
 
 if __name__ == "__main__":
-    quick_scrape()
+    scrape_laravel()
