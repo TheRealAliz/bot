@@ -1,23 +1,24 @@
 name: Scrape Laravel.com Website
 
 on:
-  # Manual trigger from GitHub UI
   workflow_dispatch:
-  
-  # Optional: Run automatically every week
   schedule:
-    - cron: '0 0 * * 0'  # Every Sunday at midnight
+    - cron: '0 0 * * 0'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # Silences the warning
 
 jobs:
   scrape-website:
     runs-on: ubuntu-latest
     
     steps:
+      # Using latest versions (maintainers will update these for Node 24)
       - name: Checkout repository
-        uses: actions/checkout@v4.3.7
+        uses: actions/checkout@v4
       
       - name: Setup Python
-        uses: actions/setup-python@v5.5.0
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
@@ -29,31 +30,11 @@ jobs:
         run: |
           python scrape_laravel.py
       
-      - name: Compress files
-        run: |
-          zip -r laravel_docs.zip laravel_docs/
-          echo "Files saved:"
-          ls -la laravel_docs/
-      
-      - name: Upload artifacts (HTML/CSS/JS files)
-        uses: actions/upload-artifact@v4
-        with:
-          name: laravel-website
-          path: |
-            laravel_docs/
-            laravel_docs.zip
-          retention-days: 30
-      
-      - name: Send to Telegram/Bale (optional)
+      - name: Send notification to Bale
         env:
           BOT_TOKEN: ${{ secrets.BALE_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
         run: |
-          curl -s -X POST "https://tapi.bale.ai/bot${BOT_TOKEN}/sendDocument" \
-            -F chat_id="${CHAT_ID}" \
-            -F document="@laravel_docs.zip"
-      
-      - name: List downloaded files
-        run: |
-          echo "📁 Downloaded files structure:"
-          find laravel_docs/ -type f | head -20
+          curl -s -X POST "https://tapi.bale.ai/bot${BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CHAT_ID}" \
+            -d text="✅ Laravel.com scrape completed! Files are ready."
