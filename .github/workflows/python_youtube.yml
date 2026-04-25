@@ -1,36 +1,39 @@
-name: Python YouTube Downloader
+name: YouTube Downloader
 
 on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'YouTube URL'
+        description: 'YouTube Video URL'
         required: true
         type: string
 
 jobs:
   download:
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Install yt-dlp
-        run: |
-          pip install yt-dlp
-          echo "✅ yt-dlp installed"
-      
-      - name: Run downloader
+        run: pip install yt-dlp
+
+      - name: Download video
         run: |
           python youtube_downloader.py "${{ inputs.video_url }}"
-      
+
+      - name: Show downloaded files
+        run: ls -la
+
       - name: Upload video
         uses: actions/upload-artifact@v4
         with:
-          name: video
-          path: '*.mp4'
+          name: my-video
+          path: |
+            *.mp4
+            *.webm
+          if-no-files-found: error
