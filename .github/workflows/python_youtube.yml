@@ -29,17 +29,8 @@ jobs:
         run: |
           python youtube_downloader.py "${{ inputs.video_url }}"
       
-      - name: List files (debug)
-        run: |
-          echo "Current directory contents:"
-          ls -la
-          echo ""
-          echo "Downloads directory contents:"
-          ls -la downloads/ || echo "downloads directory not found"
-      
       - name: Upload video
         uses: actions/upload-artifact@v4
         with:
-          name: downloaded-video
-          path: downloads/
-          if-no-files-found: warn
+          name: video
+          path: '*.mp4'
