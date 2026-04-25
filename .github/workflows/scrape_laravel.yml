@@ -22,7 +22,3 @@ jobs:
             -F chat_id="${CHAT_ID}" \
             -F document="@laravel.html" \
             -F caption="📄 Laravel.com homepage
-
-📅 Scraped: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-📊 Size: $(wc -c < laravel.html) bytes
-🔗 Source: https://laravel.com"
