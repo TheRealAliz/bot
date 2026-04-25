@@ -1,24 +1,20 @@
-# This is a GitHub Actions workflow file.
+# .github/workflows/bale-test.yml
 name: Send Hello World to Bale
 
-# This trigger allows you to run the workflow manually from the 'Actions' tab.
+# Allows you to run this workflow manually from the Actions tab
 on:
   workflow_dispatch:
 
-# The 'jobs' block defines the work that will be done.
 jobs:
   send-message:
-    # The job runs on the latest Ubuntu virtual machine provided by GitHub.
     runs-on: ubuntu-latest
     steps:
-      # The 'env' block makes the secrets available to the 'run' step as environment variables.
-      - name: Send a test message via curl
+      - name: Send a test message via Bale API
         env:
           BOT_TOKEN: ${{ secrets.BALE_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
         run: |
-          # This is the command that sends the message.
-          # It uses 'curl' to make a POST request to Bale's official API.
-          curl -s -X POST "https://api.bale.ai/v1/bot${BOT_TOKEN}/sendMessage" \
+          # Using the official Bale API endpoint as per docs: https://tapi.bale.ai/bot<token>/METHOD_NAME
+          curl -s -X POST "https://tapi.bale.ai/bot${BOT_TOKEN}/sendMessage" \
             -d chat_id="${CHAT_ID}" \
-            -d text="Hello from GitHub Actions! Your Bale bot is working perfectly. 🚀"
+            -d text="Hello from GitHub Actions! Your Bale bot is working perfectly. (Test via API)"
