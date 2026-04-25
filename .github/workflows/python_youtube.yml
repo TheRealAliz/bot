@@ -21,15 +21,25 @@ jobs:
           python-version: '3.11'
       
       - name: Install yt-dlp
-        run: pip install yt-dlp
+        run: |
+          pip install yt-dlp
+          echo "✅ yt-dlp installed"
       
       - name: Run downloader
         run: |
           python youtube_downloader.py "${{ inputs.video_url }}"
+      
+      - name: List files (debug)
+        run: |
+          echo "Current directory contents:"
+          ls -la
+          echo ""
+          echo "Downloads directory contents:"
+          ls -la downloads/ || echo "downloads directory not found"
       
       - name: Upload video
         uses: actions/upload-artifact@v4
         with:
           name: downloaded-video
           path: downloads/
-          retention-days: 7
+          if-no-files-found: warn
