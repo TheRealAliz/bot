@@ -21,25 +21,96 @@ jobs:
       - name: Run scraper
         run: python scrape_laravel.py
       
-      - name: Create ZIP archive
+      - name: Verify files were created
         run: |
-          zip -r laravel_complete_site.zip laravel_docs/
-          echo "ZIP size: $(du -h laravel_complete_site.zip)"
+          echo "Checking for scraped files..."
+          if [ -d "laravel_docs" ]; then
+            echo "✅ laravel_docs directory exists"
+            echo "Files found:"
+            ls -la laravel_docs/
+            echo "Total size: $(du -sh laravel_docs/ | cut -f1)"
+          else
+            echo "❌ No laravel_docs directory found!"
+            echo "Current directory contents:"
+            ls -la
+            exit 1
+          fi
       
-      - name: Upload to GitHub Artifacts
+      - name: Create ZIP archive (Method 1 - using zip)
+        run: |
+          # Install zip if not present
+          if ! command -v zip &> /dev/null; then
+            echo "Installing zip..."
+            sudo apt-get update
+            sudo apt-get install -y zip
+          fi
+          
+          # Create zip with verbose output
+          echo "Creating ZIP archive..."
+          zip -r laravel_complete_site.zip laravel_docs/
+          
+          # Verify zip was created
+          if [ -f "laravel_complete_site.zip" ]; then
+            echo "✅ ZIP created successfully"
+            echo "ZIP size: $(du -h laravel_complete_site.zip | cut -f1)"
+          else
+            echo "❌ Failed to create ZIP"
+            exit 1
+          fi
+      
+      - name: Alternative - Create tar.gz (if zip fails)
+        if: failure()
+        run: |
+          echo "zip failed, creating tar.gz instead..."
+          tar -czf laravel_complete_site.tar.gz laravel_docs/
+          echo "✅ tar.gz created: $(du -h laravel_complete_site.tar.gz | cut -f1)"
+      
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: laravel-html-css-js
-          path: laravel_complete_site.zip
-          retention-days: 90
+          name: laravel-website
+          path: |
+            laravel_docs/
+            laravel_complete_site.zip
+            laravel_complete_site.tar.gz
+          retention-days: 30
+          if-no-files-found: warn
       
-      - name: Send to Bale Messenger
+      - name: Send to Bale (using Python instead of curl for better error handling)
         env:
           BOT_TOKEN: ${{ secrets.BALE_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
         run: |
-          # Send ZIP file
-          curl -s -X POST "https://tapi.bale.ai/bot${BOT_TOKEN}/sendDocument" \
-            -F chat_id="${CHAT_ID}" \
-            -F document="@laravel_complete_site.zip" \
-            -F caption="✅ Laravel.com scraped successfully!
+          python << EOF
+          import requests
+          import os
+          import glob
+          
+          bot_token = os.environ.get('BOT_TOKEN')
+          chat_id = os.environ.get('CHAT_ID')
+          
+          # Find the archive file (zip or tar.gz)
+          zip_files = glob.glob('laravel_complete_site.zip') + glob.glob('laravel_complete_site.tar.gz')
+          
+          if not zip_files:
+              print("No archive file found!")
+              exit(1)
+          
+          archive_file = zip_files[0]
+          print(f"Sending {archive_file} to Bale...")
+          
+          # Send document to Bale
+          url = f"https://tapi.bale.ai/bot{bot_token}/sendDocument"
+          
+          with open(archive_file, 'rb') as f:
+              files = {'document': (archive_file, f, 'application/zip')}
+              data = {'chat_id': chat_id, 'caption': f'✅ Laravel.com scraped successfully!\n\nFile: {archive_file}\nSize: {os.path.getsize(archive_file)} bytes'}
+              
+              response = requests.post(url, files=files, data=data)
+          
+          if response.status_code == 200:
+              print("✅ File sent to Bale successfully!")
+          else:
+              print(f"❌ Failed to send: {response.text}")
+              exit(1)
+          EOF
