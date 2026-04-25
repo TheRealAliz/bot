@@ -1,52 +1,81 @@
-name: Scrape and Send HTML to Bale
+name: Scrape Laravel and Save to Repo
 
 on:
   workflow_dispatch:
+  # Optional: Run automatically every day at midnight
+  # schedule:
+  #   - cron: '0 0 * * *'
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed to push to repository
     
     steps:
-      - name: Fetch laravel.com HTML
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install requests
+        run: pip install requests
+      
+      - name: Scrape laravel.com
         run: |
-          echo "🌐 Downloading laravel.com..."
+          python << EOF
+          import requests
+          from datetime import datetime
           
-          # Download with verbose output for debugging
-          curl -v -L \
-            -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
-            https://laravel.com \
-            -o laravel.html
+          print("🌐 Downloading laravel.com...")
           
-          # Check if download succeeded
-          if [ -f "laravel.html" ]; then
-            SIZE=$(wc -c < laravel.html)
-            echo "✅ Downloaded HTML successfully! Size: $SIZE bytes"
-            
-            # Show first few lines to verify content
-            echo "First 200 characters:"
-            head -c 200 laravel.html
-            echo ""
+          headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+          response = requests.get('https://laravel.com', headers=headers, timeout=30)
+          response.raise_for_status()
+          
+          # Save with timestamp
+          timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+          filename = f'laravel_{timestamp}.html'
+          
+          with open(filename, 'w', encoding='utf-8') as f:
+              f.write(response.text)
+          
+          # Also save as latest.html (overwrite)
+          with open('laravel_latest.html', 'w', encoding='utf-8') as f:
+              f.write(response.text)
+          
+          file_size = len(response.text)
+          print(f"✅ Saved: {filename} ({file_size} bytes)")
+          print(f"✅ Saved: laravel_latest.html ({file_size} bytes)")
+          
+          # Save info file
+          with open('scrape_info.txt', 'w') as f:
+              f.write(f"Last scrape: {datetime.now().isoformat()}\n")
+              f.write(f"File size: {file_size} bytes\n")
+              f.write(f"Source: https://laravel.com\n")
+          EOF
+      
+      - name: Commit and push files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add all HTML files
+          git add laravel_*.html
+          git add scrape_info.txt
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
           else
-            echo "❌ Failed to download file"
-            exit 1
+            git commit -m "Update Laravel.com snapshot - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            git push
+            echo "✅ Files committed to repository"
           fi
       
-      - name: Send to Bale
-        env:
-          BOT_TOKEN: ${{ secrets.BALE_BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
+      - name: Show files saved
         run: |
-          echo "📤 Sending to Bale..."
-          
-          # Verify file exists before sending
-          if [ ! -f "laravel.html" ]; then
-            echo "❌ laravel.html not found!"
-            exit 1
-          fi
-          
-          # Send to Bale with error capture
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://tapi.bale.ai/bot${BOT_TOKEN}/sendDocument" \
-            -F chat_id="${CHAT_ID}" \
-            -F document="@laravel.html" \
-            -F caption="📄 Laravel.com homepage
+          echo "📁 Files in repository:"
+          ls -la laravel_*.html scrape_info.txt 2>/dev/null || echo "No files found"
