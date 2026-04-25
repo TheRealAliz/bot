@@ -10,15 +10,43 @@ jobs:
     steps:
       - name: Fetch laravel.com HTML
         run: |
-          curl -s -L -H "User-Agent: Mozilla/5.0" https://laravel.com -o laravel.html
-          echo "✅ Downloaded HTML ($(wc -c < laravel.html) bytes)"
+          echo "🌐 Downloading laravel.com..."
+          
+          # Download with verbose output for debugging
+          curl -v -L \
+            -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
+            https://laravel.com \
+            -o laravel.html
+          
+          # Check if download succeeded
+          if [ -f "laravel.html" ]; then
+            SIZE=$(wc -c < laravel.html)
+            echo "✅ Downloaded HTML successfully! Size: $SIZE bytes"
+            
+            # Show first few lines to verify content
+            echo "First 200 characters:"
+            head -c 200 laravel.html
+            echo ""
+          else
+            echo "❌ Failed to download file"
+            exit 1
+          fi
       
       - name: Send to Bale
         env:
           BOT_TOKEN: ${{ secrets.BALE_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
         run: |
-          curl -X POST "https://tapi.bale.ai/bot${BOT_TOKEN}/sendDocument" \
+          echo "📤 Sending to Bale..."
+          
+          # Verify file exists before sending
+          if [ ! -f "laravel.html" ]; then
+            echo "❌ laravel.html not found!"
+            exit 1
+          fi
+          
+          # Send to Bale with error capture
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://tapi.bale.ai/bot${BOT_TOKEN}/sendDocument" \
             -F chat_id="${CHAT_ID}" \
             -F document="@laravel.html" \
             -F caption="📄 Laravel.com homepage
