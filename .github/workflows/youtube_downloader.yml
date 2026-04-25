@@ -1,0 +1,47 @@
+name: Download YouTube Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'YouTube video URL'
+        required: true
+        type: string
+      quality:
+        description: 'Video quality'
+        required: false
+        default: 'best'
+        type: choice
+        options:
+          - best
+          - bestvideo+bestaudio
+          - mp4
+          - 1080p
+          - 720p
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Setup yt-dlp
+        uses: AnimMouse/setup-yt-dlp@v3
+        
+      - name: Download video
+        run: |
+          yt-dlp -f "${{ inputs.quality }}" \
+            -o "video_%(title)s.%(ext)s" \
+            "${{ inputs.video_url }}"
+      
+      - name: List downloaded files
+        run: ls -la *.mp4 *.webm 2>/dev/null || echo "No video files found"
+      
+      - name: Upload video as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: downloaded-video
+          path: |
+            *.mp4
+            *.webm
+            *.mkv
+          retention-days: 7
