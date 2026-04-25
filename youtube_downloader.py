@@ -1,30 +1,51 @@
 import yt_dlp
 import sys
+import os
 import glob
 
-def download_video_simple(url):
-    """Download video to current directory"""
+def download_video(url):
+    print(f"Attempting to download: {url}")
     
+    # Download to current directory
     ydl_opts = {
-        'format': 'best[height<=720]',
-        'outtmpl': '%(title)s.%(ext)s',  # Save in current directory
+        'format': 'best[height<=480]',  # Lower quality is more reliable
+        'outtmpl': '%(title)s.%(ext)s',
+        'quiet': False,
+        'no_warnings': False,
+        'ignoreerrors': True,  # Don't crash on age-restricted videos
     }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            print(f"Downloading: {url}")
+            # First, extract info to see if we can access the video
+            info = ydl.extract_info(url, download=False)
+            if info is None:
+                print("❌ Cannot access video info. Video might be private or age-restricted.")
+                return False
+                
+            print(f"✅ Found video: {info.get('title', 'Unknown')}")
+            
+            # Now download
             ydl.download([url])
             
-            # Find downloaded files
-            video_files = glob.glob('*.mp4') + glob.glob('*.webm') + glob.glob('*.mkv')
-            if video_files:
-                print(f"✅ Downloaded: {video_files[0]}")
+            # Check for downloaded files
+            files = glob.glob('*.mp4') + glob.glob('*.webm') + glob.glob('*.mkv')
+            if files:
+                print(f"✅ Success! Downloaded: {files[0]}")
                 return True
-            return False
+            else:
+                print("❌ Download completed but no video file found.")
+                return False
+                
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")
         return False
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        download_video_simple(sys.argv[1])
+    if len(sys.argv) < 2:
+        print("Usage: python youtube_downloader.py <URL>")
+        sys.exit(1)
+        
+    url = sys.argv[1]
+    success = download_video(url)
+    sys.exit(0 if success else 1)
