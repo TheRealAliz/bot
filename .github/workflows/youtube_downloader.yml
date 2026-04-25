@@ -1,47 +1,31 @@
-name: Download YouTube Video
+name: Simple YouTube Downloader
 
 on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'YouTube video URL'
+        description: 'YouTube URL'
         required: true
-        type: string
-      quality:
-        description: 'Video quality'
-        required: false
-        default: 'best'
-        type: choice
-        options:
-          - best
-          - bestvideo+bestaudio
-          - mp4
-          - 1080p
-          - 720p
 
 jobs:
   download:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Setup yt-dlp
-        uses: AnimMouse/setup-yt-dlp@v3
-        
+      - name: Install youtube-dl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          sudo curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl
+          sudo chmod a+rx /usr/local/bin/youtube-dl
+      
       - name: Download video
         run: |
-          yt-dlp -f "${{ inputs.quality }}" \
-            -o "video_%(title)s.%(ext)s" \
+          youtube-dl -f "best[height<=480]" \
+            -o "video.%(ext)s" \
             "${{ inputs.video_url }}"
       
-      - name: List downloaded files
-        run: ls -la *.mp4 *.webm 2>/dev/null || echo "No video files found"
-      
-      - name: Upload video as artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: downloaded-video
-          path: |
-            *.mp4
-            *.webm
-            *.mkv
-          retention-days: 7
+          name: video
+          path: '*.mp4'
