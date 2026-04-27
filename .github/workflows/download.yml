@@ -26,7 +26,7 @@ jobs:
           from pytube import YouTube
           import os
           
-          url = 'https://www.youtube.com/watch?v=YOUR_VIDEO_ID'
+          url = 'https://www.youtube.com/watch?v=2AwGnD7cGI4'
           yt = YouTube(url)
           video = yt.streams.get_highest_resolution()
           video.download(output_path='./downloads')
