@@ -12,15 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup yt-dlp
-        uses: AnimMouse/setup-yt-dlp@v3
+        uses: AnimMouse/setup-yt-dlp@v3.1.2
         # FFmpeg و aria2 به صورت خودکار تنظیم می‌شوند
 
       - name: Download video
-        run: |
-          yt-dlp -o "video.%(ext)s" "${{ github.event.inputs.url }}"
-
-      - name: Upload video
-        uses: actions/upload-artifact@v4
-        with:
-          name: video
-          path: ./video.*
+        run: yt-dlp https://www.youtube.com/watch?v=DTi8wZ1a1TA
