@@ -1,85 +1,26 @@
-name: YouTube Downloader with Bale Error Reporting
+name: Download with yt-dlp
 
 on:
   workflow_dispatch:
     inputs:
       url:
-        description: 'YouTube URL'
+        description: 'Video URL'
         required: true
-        default: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
 
 jobs:
   download:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-    
-    - name: Install pytube
-      run: pip install pytube
-    
-    - name: Download video with error handling
-      id: download
-      continue-on-error: true
-      run: |
-        python << EOF
-        from pytube import YouTube
-        import sys
-        import json
-        
-        url = "${{ github.event.inputs.url }}"
-        
-        try:
-            yt = YouTube(url)
-            print(f"✓ Downloading: {yt.title}")
-            video = yt.streams.get_highest_resolution()
-            video.download(filename="video.mp4")
-            print("✓ Download successful")
-            print("::set-output name=success::true")
-            print("::set-output name=title::{}".format(yt.title))
-        except Exception as e:
-            error_msg = str(e)
-            print(f"❌ Error: {error_msg}")
-            print("::set-output name=success::false")
-            print("::set-output name=error::{}".format(error_msg))
-            sys.exit(1)
-        EOF
-    
-    - name: Send success message to Bale
-      if: steps.download.outputs.success == 'true'
-      env:
-        BALE_BOT_TOKEN: ${{ secrets.BALE_BOT_TOKEN }}
-        BALE_CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
-      run: |
-        VIDEO_TITLE="${{ steps.download.outputs.title }}"
-        MESSAGE="✅ *دانلود با موفقیت انجام شد*%0A%0A📹 عنوان: $VIDEO_TITLE%0A🔗 لینک: ${{ github.event.inputs.url }}%0A⏱ زمان: $(date '+%Y-%m-%d %H:%M:%S')"
-        
-        curl -X POST "https://api.bale.ai/v1/bot$BALE_BOT_TOKEN/sendMessage" \
-          -H "Content-Type: application/json" \
-          -d "{\"chat_id\":\"$BALE_CHAT_ID\",\"text\":\"$MESSAGE\",\"parse_mode\":\"HTML\"}"
-    
-    - name: Send error message to Bale
-      if: steps.download.outputs.success == 'false' || failure()
-      env:
-        BALE_BOT_TOKEN: ${{ secrets.BALE_BOT_TOKEN }}
-        BALE_CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
-      run: |
-        ERROR_MSG="${{ steps.download.outputs.error || 'Unknown error occurred' }}"
-        WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        
-        MESSAGE="❌ *خطا در دانلود ویدیو*%0A%0A🔗 لینک: ${{ github.event.inputs.url }}%0A⚠️ خطا: $ERROR_MSG%0A🔍 لینک خطاها: $WORKFLOW_URL%0A⏱ زمان: $(date '+%Y-%m-%d %H:%M:%S')"
-        
-        curl -X POST "https://api.bale.ai/v1/bot$BALE_BOT_TOKEN/sendMessage" \
-          -H "Content-Type: application/json" \
-          -d "{\"chat_id\":\"$BALE_CHAT_ID\",\"text\":\"$MESSAGE\"}"
-    
-    - name: Upload video on success
-      if: steps.download.outputs.success == 'true'
-      uses: actions/upload-artifact@v4
-      with:
-        name: youtube-video
-        path: ./video.mp4
-        retention-days: 7
+      - name: Setup yt-dlp
+        uses: AnimMouse/setup-yt-dlp@v3
+        # FFmpeg و aria2 به صورت خودکار تنظیم می‌شوند
+
+      - name: Download video
+        run: |
+          yt-dlp -o "video.%(ext)s" "${{ github.event.inputs.url }}"
+
+      - name: Upload video
+        uses: actions/upload-artifact@v4
+        with:
+          name: video
+          path: ./video.*
